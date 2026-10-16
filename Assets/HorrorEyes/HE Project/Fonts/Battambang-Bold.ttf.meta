@@ -1,0 +1,26 @@
+fileFormatVersion: 2
+guid: d93d8c04bd3862d4b820714e8be0ae92
+TrueTypeFontImporter:
+  externalObjects: {}
+  serializedVersion: 4
+  fontSize: 16
+  forceTextureCase: -2
+  characterSpacing: 0
+  characterPadding: 1
+  includeFontData: 1
+  fontNames:
+  - Battambang
+  fallbackFontReferences:
+  - {fileID: 12800000, guid: 3bc1babefaf341f428a21b416d0fb603, type: 3}
+  - {fileID: 12800000, guid: 663959706fe8e93449decd9b59f9df79, type: 3}
+  - {fileID: 12800000, guid: 5cc009a93ed3b5c45803555c35564f48, type: 3}
+  - {fileID: 12800000, guid: 4b10f89aaf9a53341b83224feab696e1, type: 3}
+  - {fileID: 12800000, guid: 689d29c280e207741b30216b5cbf9035, type: 3}
+  customCharacters: 
+  fontRenderingMode: 0
+  ascentCalculationMode: 1
+  useLegacyBoundsCalculation: 0
+  shouldRoundAdvanceValue: 1
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 

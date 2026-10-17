@@ -11,18 +11,34 @@ on:
 
 jobs:
   build:
-
     runs-on: ubuntu-latest
 
     steps:
-    - uses: actions/checkout@v4
-    - name: Setup .NET
-      uses: actions/setup-dotnet@v4
-      with:
-        dotnet-version: 8.0.x
-    - name: Restore dependencies
-      run: dotnet restore
-    - name: Build
-      run: dotnet build --no-restore
-    - name: Test
-      run: dotnet test --no-build --verbosity normal
+      - uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 8.0.x
+
+      - name: Locate solution or project
+        id: locate
+        shell: bash
+        run: |
+          set -e
+          file=$(find . -type f \( -name "*.sln" -o -name "*.csproj" \) -print -quit || true)
+          if [ -z "$file" ]; then
+            echo "No .sln or .csproj found in the repository."
+            exit 1
+          fi
+          echo "Found: $file"
+          echo "solution=$file" >> "$GITHUB_OUTPUT"
+
+      - name: Restore dependencies
+        run: dotnet restore "${{ steps.locate.outputs.solution }}"
+
+      - name: Build
+        run: dotnet build "${{ steps.locate.outputs.solution }}" --no-restore
+
+      - name: Test
+        run: dotnet test "${{ steps.locate.outputs.solution }}" --no-build --verbosity normal

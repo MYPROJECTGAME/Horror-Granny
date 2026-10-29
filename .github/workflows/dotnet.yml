@@ -1,6 +1,5 @@
-# This workflow will build a .NET project
-# For more information see: https://docs.github.com/en/actions/automating-builds-and-tests/building-and-testing-net
-
+# This workflow builds .NET projects when a solution or project exists.
+# Unity repositories may not contain a standalone .sln/.csproj at the repository root.
 name: .NET
 
 on:
@@ -12,33 +11,37 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
-
     steps:
       - uses: actions/checkout@v4
-
-      - name: Setup .NET
-        uses: actions/setup-dotnet@v4
-        with:
-          dotnet-version: 8.0.x
 
       - name: Locate solution or project
         id: locate
         shell: bash
         run: |
-          set -e
-          file=$(find . -type f \( -name "*.sln" -o -name "*.csproj" \) -print -quit || true)
+          file=$(find . -type f \( -name "*.sln" -o -name "*.csproj" \) -not -path "*/Library/*" -not -path "*/Temp/*" -print -quit || true)
           if [ -z "$file" ]; then
-            echo "No .sln or .csproj found in the repository."
-            exit 1
+            echo "found=false" >> "$GITHUB_OUTPUT"
+            echo "No .sln or .csproj found. Skipping .NET build because this repository may be a Unity project."
+            exit 0
           fi
-          echo "Found: $file"
+          echo "found=true" >> "$GITHUB_OUTPUT"
           echo "solution=$file" >> "$GITHUB_OUTPUT"
+          echo "Found .NET project: $file"
+
+      - name: Setup .NET
+        if: steps.locate.outputs.found == 'true'
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 8.0.x
 
       - name: Restore dependencies
+        if: steps.locate.outputs.found == 'true'
         run: dotnet restore "${{ steps.locate.outputs.solution }}"
 
       - name: Build
+        if: steps.locate.outputs.found == 'true'
         run: dotnet build "${{ steps.locate.outputs.solution }}" --no-restore
 
       - name: Test
+        if: steps.locate.outputs.found == 'true'
         run: dotnet test "${{ steps.locate.outputs.solution }}" --no-build --verbosity normal

@@ -33,6 +33,10 @@ public class GameControll : MonoBehaviour
     public float m_ambientSoundsVolume = 1f;
     private AudioSource m_gameplayMusicSource;
     private AudioSource m_ambientSoundsSource;
+    private Coroutine m_tipCoroutine;
+    private bool m_terminalState;
+    private Text m_objectivePromptText;
+    private Text m_interactionPromptText;
 
     [Header("Enemy Settings")]
     public Text m_eyesPillsCountText;
@@ -69,6 +73,7 @@ public class GameControll : MonoBehaviour
     public GameObject gameWinPanel;
     public Slider volumeSlider;
     public Slider sensitivitySlider;
+    public Font m_uiFont;
 
     [Header("Tips Settings")]
     [Tooltip("Tips")]
@@ -139,15 +144,90 @@ public class GameControll : MonoBehaviour
     private void Start()
     {
         SetupPlatformControls();
+        SetupGameplayPrompts();
         StartGameplayAudio();
 
         m_spawner.SpawnPictures(m_needPicturesCount);
         m_spawner.SpawnPills();
         Time.timeScale = 1.0f;
-        pausePanel.SetActive(false);
-        enemyEyesControllPanel.SetActive(false);
+        pause = false;
+        m_terminalState = false;
+        SetPanelActive(pausePanel, false);
+        SetPanelActive(gameOverPanel, false);
+        SetPanelActive(gameWinPanel, false);
+        SetPanelActive(enemyEyesControllPanel, false);
+        SetPanelActive(gameControllPanel, true);
         m_currentPapersCountText.text = m_currenPicturestCount.ToString() + "/" + m_needPicturesCount.ToString();
+        UpdateObjectivePrompt();
+    }
 
+    private void SetupGameplayPrompts()
+    {
+        Canvas canvas = GetComponentInChildren<Canvas>(true);
+        if (canvas == null)
+        {
+            Debug.LogError("Cannot create gameplay prompts because the GameManager has no Canvas.", this);
+            return;
+        }
+
+        m_objectivePromptText = CreatePromptText(canvas.transform, "ObjectivePrompt",
+            new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0f, -34f),
+            new Vector2(700f, 50f), 22);
+        m_interactionPromptText = CreatePromptText(canvas.transform, "InteractionPrompt",
+            new Vector2(0.5f, 0f), new Vector2(0.5f, 0f), new Vector2(0f, 42f),
+            new Vector2(700f, 42f), 20);
+        m_interactionPromptText.text = Application.isMobilePlatform
+            ? "Tap an object to interact"
+            : "Left click to interact";
+    }
+
+    private Text CreatePromptText(Transform parent, string objectName, Vector2 anchorMin, Vector2 anchorMax,
+        Vector2 anchoredPosition, Vector2 sizeDelta, int fontSize)
+    {
+        GameObject promptObject = new GameObject(objectName, typeof(RectTransform), typeof(Text), typeof(Shadow));
+        promptObject.transform.SetParent(parent, false);
+        RectTransform promptRect = promptObject.GetComponent<RectTransform>();
+        promptRect.anchorMin = anchorMin;
+        promptRect.anchorMax = anchorMax;
+        promptRect.pivot = new Vector2(0.5f, 0.5f);
+        promptRect.anchoredPosition = anchoredPosition;
+        promptRect.sizeDelta = sizeDelta;
+
+        Text prompt = promptObject.GetComponent<Text>();
+        prompt.font = m_uiFont != null
+            ? m_uiFont
+            : m_TipText != null && m_TipText.font != null
+                ? m_TipText.font
+                : Resources.GetBuiltinResource<Font>("Arial.ttf");
+        prompt.fontSize = fontSize;
+        prompt.fontStyle = FontStyle.Bold;
+        prompt.alignment = TextAnchor.MiddleCenter;
+        prompt.horizontalOverflow = HorizontalWrapMode.Wrap;
+        prompt.verticalOverflow = VerticalWrapMode.Truncate;
+        prompt.color = Color.white;
+        prompt.raycastTarget = false;
+
+        Shadow shadow = promptObject.GetComponent<Shadow>();
+        shadow.effectColor = new Color(0f, 0f, 0f, 0.85f);
+        shadow.effectDistance = new Vector2(2f, -2f);
+        return prompt;
+    }
+
+    private void UpdateObjectivePrompt()
+    {
+        if (m_objectivePromptText != null)
+        {
+            m_objectivePromptText.text = "Objective: Collect pictures " +
+                m_currenPicturestCount.ToString() + "/" + m_needPicturesCount.ToString();
+        }
+    }
+
+    public void SetInteractionPromptVisible(bool visible)
+    {
+        if (m_interactionPromptText != null)
+        {
+            m_interactionPromptText.gameObject.SetActive(visible && !m_terminalState && !pause);
+        }
     }
 
     private void SetupPlatformControls()
@@ -647,6 +727,7 @@ public class GameControll : MonoBehaviour
         m_currenPicturestCount += 1;
         m_paperPicturesAnimationUI.Play(m_addPaperPictureAnimation);
         m_currentPapersCountText.text = m_currenPicturestCount.ToString() + "/" + m_needPicturesCount.ToString();
+        UpdateObjectivePrompt();
     }
 
     public void AddEyePills(int cnt)
@@ -807,44 +888,60 @@ public class GameControll : MonoBehaviour
 
     public void PauseGame()
     {
-        
-            if (!pause)
-            {
-               if (!player.lockedByDying)
-               {
-                pause = true;
-                pausePanel.SetActive(pause);
-                Time.timeScale = 0.0f;
-                player.locked = true;
-               }
+        if (m_terminalState || player == null || player.lockedByDying)
+        {
+            return;
+        }
 
-            }
-            else
-            {
-            
-                pause = false;
-                pausePanel.SetActive(pause);
-                Time.timeScale = 1.0f;
-                player.locked = false;
-            
-            }
-        
+        pause = !pause;
+        SetPanelActive(pausePanel, pause);
+        Time.timeScale = pause ? 0.0f : 1.0f;
+        player.locked = pause;
+        SetInteractionPromptVisible(!pause);
     }
 
     public void GameOver()
     {
-       
-        gameOverPanel.SetActive(true);
+        if (m_terminalState)
+        {
+            return;
+        }
+
+        m_terminalState = true;
+        pause = false;
+        Time.timeScale = 0.0f;
+        player.locked = true;
+        player.lockedByDying = true;
+        SetPanelActive(gameControllPanel, false);
+        SetPanelActive(pausePanel, false);
+        SetPanelActive(gameOverPanel, true);
+        if (m_objectivePromptText != null)
+        {
+            m_objectivePromptText.gameObject.SetActive(false);
+        }
+        SetInteractionPromptVisible(false);
     }
 
     public void GameWin()
     {
+        if (m_terminalState)
+        {
+            return;
+        }
 
-        
-        gameControllPanel.SetActive(false);
-        gameWinPanel.SetActive(true);
+        m_terminalState = true;
+        pause = false;
+        Time.timeScale = 0.0f;
+        SetPanelActive(gameControllPanel, false);
+        SetPanelActive(pausePanel, false);
+        SetPanelActive(gameWinPanel, true);
         player.locked = true;
         player.lockedByDying = true;
+        if (m_objectivePromptText != null)
+        {
+            m_objectivePromptText.gameObject.SetActive(false);
+        }
+        SetInteractionPromptVisible(false);
         for (int i = 0; i < enemy.Count; i++)
         {
             enemy[i].gameObject.SetActive(false);
@@ -852,51 +949,61 @@ public class GameControll : MonoBehaviour
      
     }
 
+    private void SetPanelActive(GameObject panel, bool active)
+    {
+        if (panel != null)
+        {
+            panel.SetActive(active);
+        }
+    }
+
     public void ShowTip(int itemId, int type)
     {
-
-        StopCoroutine(WaitForTip());
+        if (m_tipCoroutine != null)
+        {
+            StopCoroutine(m_tipCoroutine);
+        }
 
         if (type == 0)
         {
             m_TipText.gameObject.SetActive(true);
             m_TipText.text = "You need a " + inventory.m_itemsDatabase.Items[itemId].name;
-            StartCoroutine(WaitForTip());
+            m_tipCoroutine = StartCoroutine(WaitForTip());
         }
 
         if (type == 1)
         {
             m_TipText.gameObject.SetActive(true);
             m_TipText.text = "Door is jamned!";
-            StartCoroutine(WaitForTip());
+            m_tipCoroutine = StartCoroutine(WaitForTip());
         }
 
         if (type == 3)
         {
             m_TipText.gameObject.SetActive(true);
             m_TipText.text = "I need to find all pictures before leave this place!";
-            StartCoroutine(WaitForTip());
+            m_tipCoroutine = StartCoroutine(WaitForTip());
         }
 
         if (type == 4)
         {
             m_TipText.gameObject.SetActive(true);
             m_TipText.text = "Used a " + inventory.m_itemsDatabase.Items[itemId].name;
-            StartCoroutine(WaitForTip());
+            m_tipCoroutine = StartCoroutine(WaitForTip());
         }
 
         if (type == 5)
         {
             m_TipText.gameObject.SetActive(true);
             m_TipText.text = "No Power!";
-            StartCoroutine(WaitForTip());
+            m_tipCoroutine = StartCoroutine(WaitForTip());
         }
 
         if (type == 6)
         {
             m_TipText.gameObject.SetActive(true);
             m_TipText.text = "You take a " + inventory.m_itemsDatabase.Items[itemId].name;
-            StartCoroutine(WaitForTip());
+            m_tipCoroutine = StartCoroutine(WaitForTip());
         }
     }
 
@@ -999,6 +1106,7 @@ public class GameControll : MonoBehaviour
         yield return new WaitForSeconds(m_TipShowTime);
         m_TipText.text = "";
         m_TipText.gameObject.SetActive(false);
+        m_tipCoroutine = null;
 
     }
 
@@ -1043,6 +1151,7 @@ public class GameControll : MonoBehaviour
         PlayerPrefs.SetFloat("Sensitivity", sensitivitySlider.value);
         AudioListener.volume = PlayerPrefs.GetFloat("Volume");
         player.mouseSensetivity = PlayerPrefs.GetFloat("Sensitivity");
+        PlayerPrefs.Save();
 
     }
 }

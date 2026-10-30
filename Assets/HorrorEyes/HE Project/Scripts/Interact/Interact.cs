@@ -43,6 +43,8 @@ public class Interact : MonoBehaviour {
 
     private void Update()
     {
+        UpdateInteractionPrompt();
+
         if (!player.locked)
         {
             if (m_gameController.m_mobileTouchInput)
@@ -63,6 +65,7 @@ public class Interact : MonoBehaviour {
                                     CheckRaycastedObject(hot.transform.gameObject, -1);
                                 }
                             }
+
                         }
 
                     }
@@ -99,6 +102,30 @@ public class Interact : MonoBehaviour {
         {
             TakingItem();
         }
+    }
+
+    private void UpdateInteractionPrompt()
+    {
+        if (m_gameController == null || player == null || player.locked || Camera.main == null)
+        {
+            if (m_gameController != null)
+            {
+                m_gameController.SetInteractionPromptVisible(false);
+            }
+            return;
+        }
+
+        if (m_gameController.m_mobileTouchInput)
+        {
+            m_gameController.SetInteractionPromptVisible(true);
+            return;
+        }
+
+        Ray ray = Camera.main.ScreenPointToRay(Input.mousePosition);
+        RaycastHit hit;
+        bool canInteract = Physics.Raycast(ray, out hit, rayDistance, interactLayers) &&
+            hit.transform.gameObject.tag == interactTag;
+        m_gameController.SetInteractionPromptVisible(canInteract);
     }
 
     private void ReadPaper()

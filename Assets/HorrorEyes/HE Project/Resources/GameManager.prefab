@@ -4237,6 +4237,7 @@ MonoBehaviour:
   gameWinPanel: {fileID: 8726745160986669002}
   volumeSlider: {fileID: 4515576357798917090}
   sensitivitySlider: {fileID: 4435070045848883397}
+  m_uiFont: {fileID: 12800000, guid: 5ec2647ad471e9a4c8d28a0dbe198fa9, type: 3}
   m_TipText: {fileID: 5648931373085001634}
   m_TipShowTime: 3
   m_currentPicture: {fileID: 6372843419522161050}

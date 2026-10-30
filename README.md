@@ -27,6 +27,15 @@ Every sound matters. Move quietly, hide wisely, and stay alert — Granny can he
 
 The game focuses on stealth, exploration, suspense, and survival.
 
+For Android, install **Android Build Support**, **Android SDK & NDK Tools**, and **OpenJDK** for Unity 2020.2.0f1. Build an APK from the Android target in **File > Build Settings**.
+
+### Current UI and Controls
+
+- Main menu settings include volume, mouse sensitivity, and fullscreen mode.
+- In-game UI shows the picture objective, interaction prompts, pause/resume, and win/game-over screens.
+- PC controls: WASD or arrow keys to move, mouse to look, Left Shift to run, C to crouch, Left Mouse Button to interact, and Esc to pause.
+- Mobile controls are enabled automatically on supported devices.
+
 ## ✨ Features
 
 - 👻 Horror-themed atmosphere

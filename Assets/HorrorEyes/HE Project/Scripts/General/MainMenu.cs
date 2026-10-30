@@ -10,6 +10,7 @@ public class MainMenu : MonoBehaviour {
     public Slider volumeSlider;
     [Tooltip("Slider to controll sensitivity")]
     public Slider sensitivitySlider;
+    public Toggle fullscreenToggle;
     public GameObject m_lockImageGameObject;
     public Button m_playButton;
     public Text m_playButtonText;
@@ -63,6 +64,7 @@ public class MainMenu : MonoBehaviour {
     private void Awake()
     {
         ApplyKhmerFont();
+        SetupFullscreenSetting();
 
         if (PlayerPrefs.HasKey("ReturnFromGame"))
         {
@@ -79,12 +81,14 @@ public class MainMenu : MonoBehaviour {
                     int m_plus_XP = PlayerPrefs.GetInt("PLUS_XP");
                     m_XP += m_plus_XP;
                     PlayerPrefs.SetInt("XP", m_XP);
+                    PlayerPrefs.Save();
                     m_plus_Xp_text.text = "+ " + m_plus_XP.ToString();
 
                 }else
                 {
                     m_XP += 0;
                     PlayerPrefs.SetInt("XP", m_XP);
+                    PlayerPrefs.Save();
                     m_plus_Xp_text.text = "+ " + 0;
                 }
 
@@ -113,6 +117,20 @@ public class MainMenu : MonoBehaviour {
         {
             AudioListener.volume = PlayerPrefs.GetFloat("Volume");
             volumeSlider.value = PlayerPrefs.GetFloat("Volume");
+        }
+
+        if (PlayerPrefs.HasKey("Fullscreen"))
+        {
+            Screen.fullScreen = PlayerPrefs.GetInt("Fullscreen") == 1;
+        }
+        else
+        {
+            Screen.fullScreen = true;
+        }
+
+        if (fullscreenToggle != null)
+        {
+            fullscreenToggle.SetIsOnWithoutNotify(Screen.fullScreen);
         }
         else
         {
@@ -144,6 +162,80 @@ public class MainMenu : MonoBehaviour {
         {
             menuTexts[i].font = m_khmerFont;
         }
+    }
+
+    private void SetupFullscreenSetting()
+    {
+        if (fullscreenToggle != null)
+        {
+            fullscreenToggle.onValueChanged.AddListener(SetFullscreen);
+            return;
+        }
+
+        Transform settings = null;
+        Transform[] children = GetComponentsInChildren<Transform>(true);
+        for (int i = 0; i < children.Length; i++)
+        {
+            if (children[i].name == "Settings")
+            {
+                settings = children[i];
+                break;
+            }
+        }
+
+        if (settings == null)
+        {
+            return;
+        }
+
+        GameObject toggleObject = new GameObject("FullscreenToggle", typeof(RectTransform), typeof(Toggle), typeof(Image));
+        toggleObject.transform.SetParent(settings, false);
+        fullscreenToggle = toggleObject.GetComponent<Toggle>();
+        Image toggleBackground = toggleObject.GetComponent<Image>();
+        toggleBackground.color = new Color(0f, 0f, 0f, 0.35f);
+        fullscreenToggle.targetGraphic = toggleBackground;
+
+        GameObject checkmarkObject = new GameObject("Checkmark", typeof(RectTransform), typeof(Image));
+        checkmarkObject.transform.SetParent(toggleObject.transform, false);
+        RectTransform checkmarkRect = checkmarkObject.GetComponent<RectTransform>();
+        checkmarkRect.anchorMin = new Vector2(0f, 0.5f);
+        checkmarkRect.anchorMax = new Vector2(0f, 0.5f);
+        checkmarkRect.pivot = new Vector2(0f, 0.5f);
+        checkmarkRect.anchoredPosition = new Vector2(8f, 0f);
+        checkmarkRect.sizeDelta = new Vector2(22f, 22f);
+        Image checkmark = checkmarkObject.GetComponent<Image>();
+        checkmark.color = Color.white;
+        fullscreenToggle.graphic = checkmark;
+
+        RectTransform toggleRect = toggleObject.GetComponent<RectTransform>();
+        toggleRect.anchorMin = new Vector2(0.5f, 0f);
+        toggleRect.anchorMax = new Vector2(0.5f, 0f);
+        toggleRect.pivot = new Vector2(0.5f, 0f);
+        toggleRect.anchoredPosition = new Vector2(0f, 72f);
+        toggleRect.sizeDelta = new Vector2(360f, 44f);
+
+        GameObject labelObject = new GameObject("Label", typeof(RectTransform), typeof(Text));
+        labelObject.transform.SetParent(toggleObject.transform, false);
+        RectTransform labelRect = labelObject.GetComponent<RectTransform>();
+        labelRect.anchorMin = Vector2.zero;
+        labelRect.anchorMax = Vector2.one;
+        labelRect.offsetMin = new Vector2(36f, 0f);
+        labelRect.offsetMax = Vector2.zero;
+
+        Text label = labelObject.GetComponent<Text>();
+        label.font = m_khmerFont != null ? m_khmerFont : Resources.GetBuiltinResource<Font>("Arial.ttf");
+        label.fontSize = 22;
+        label.color = Color.white;
+        label.alignment = TextAnchor.MiddleLeft;
+        label.text = "Fullscreen";
+
+        fullscreenToggle.onValueChanged.AddListener(SetFullscreen);
+    }
+
+    public void SetFullscreen(bool enabled)
+    {
+        Screen.fullScreen = enabled;
+        PlayerPrefs.SetInt("Fullscreen", enabled ? 1 : 0);
     }
 
     private void GameSetup()
@@ -390,16 +482,19 @@ public class MainMenu : MonoBehaviour {
     {
         PlayerPrefs.SetFloat("Volume", volumeSlider.value);
         PlayerPrefs.SetFloat("Sensitivity", sensitivitySlider.value);
+        PlayerPrefs.SetInt("Fullscreen", Screen.fullScreen ? 1 : 0);
         AudioListener.volume = PlayerPrefs.GetFloat("Volume");
+        PlayerPrefs.Save();
      
     }
 
     public void ClearAllSaves()
     {
         m_XP = 0;
-        m_xp_text.text = m_XP.ToString();
         PlayerPrefs.DeleteAll();
+        m_xp_text.text = m_XP.ToString() + " XP";
         UpdateGameInfo();
+        PlayerPrefs.Save();
     }
 
     public void StartGame()
@@ -409,6 +504,7 @@ public class MainMenu : MonoBehaviour {
             PlayerPrefs.SetInt("EnemyMode", m_enemys[enemyID].m_enemyModeId);
             PlayerPrefs.SetString("GameLevel", m_levels[levelID].m_sceneName);
             PlayerPrefs.SetInt("GameDifficulty", m_difficults[difficultID].m_difficultId);
+            PlayerPrefs.Save();
             SceneManager.LoadScene(m_loadingSceneName, LoadSceneMode.Single);
         }
     }
@@ -427,6 +523,7 @@ public class MainMenu : MonoBehaviour {
         PlayerPrefs.SetInt("EnemyMode", enemySetup.m_enemyModeId);
         PlayerPrefs.SetString("GameLevel", m_levels[0].m_sceneName);
         PlayerPrefs.SetInt("GameDifficulty", m_difficults[0].m_difficultId);
+        PlayerPrefs.Save();
         SceneManager.LoadScene(m_loadingSceneName, LoadSceneMode.Single);
     }
 
